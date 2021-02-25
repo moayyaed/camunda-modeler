@@ -13,10 +13,15 @@
 import DiagramOpenEventHandler from '../DiagramOpenEventHandler';
 
 import processVariablesXML from './fixtures/process-variables.bpmn';
+
 import userTasksXML from './fixtures/user-tasks.bpmn';
+
 import userTasksWithParticipantsXML from './fixtures/user-tasks-with-participants.bpmn';
+
 import userTasksWithSubprocessXML from './fixtures/user-tasks-with-subprocess.bpmn';
+
 import emptyXML from './fixtures/empty.bpmn';
+
 
 describe('<DiagramOpenEventHandler>', () => {
 
@@ -63,9 +68,15 @@ describe('<DiagramOpenEventHandler>', () => {
 
     // given
     const subscribe = sinon.spy();
+
     const onSend = sinon.spy();
 
     const config = { get: () => null };
+
+    const tab = createTab({
+      file: {},
+      type: 'bpmn'
+    });
 
     // when
     const diagramOpenEventHandler = new DiagramOpenEventHandler({ onSend, subscribe, config });
@@ -74,15 +85,16 @@ describe('<DiagramOpenEventHandler>', () => {
 
     const bpmnCallback = subscribe.getCall(0).args[1];
 
-    await bpmnCallback({ tab: { file: {} } });
+    await bpmnCallback({ tab });
 
     // then
     expect(onSend).to.have.been.calledWith({
       event: 'diagramOpened',
       diagramType: 'bpmn',
-      elementTemplateCount: 0,
+      engineProfile: {},
       diagramMetrics: {},
-      elementTemplates: []
+      elementTemplates: [],
+      elementTemplateCount: 0,
     });
   });
 
@@ -91,6 +103,7 @@ describe('<DiagramOpenEventHandler>', () => {
 
     // given
     const subscribe = sinon.spy();
+
     const onSend = sinon.spy();
 
     // when
@@ -114,6 +127,7 @@ describe('<DiagramOpenEventHandler>', () => {
 
     // given
     const subscribe = sinon.spy();
+
     const onSend = sinon.spy();
 
     // when
@@ -139,6 +153,7 @@ describe('<DiagramOpenEventHandler>', () => {
 
       // given
       const subscribe = sinon.spy();
+
       const onSend = sinon.spy();
 
       const configSpy = sinon.spy();
@@ -149,6 +164,11 @@ describe('<DiagramOpenEventHandler>', () => {
         return mockElementTemplates();
       } };
 
+      const tab = createTab({
+        file: { path: 'testPath' },
+        type: 'bpmn'
+      });
+
       // when
       const diagramOpenEventHandler = new DiagramOpenEventHandler({ onSend, subscribe, config });
 
@@ -156,29 +176,25 @@ describe('<DiagramOpenEventHandler>', () => {
 
       const bpmnCallback = subscribe.getCall(0).args[1];
 
-      await bpmnCallback({ tab: { file: { path: 'testPath' } } });
+      await bpmnCallback({ tab });
 
       const configArgs = configSpy.getCall(0).args;
 
+      const elementTemplates = onSend.getCall(0).args[0].elementTemplates;
+
       // then
       expect(configArgs).to.eql([ 'bpmn.elementTemplates', { path: 'testPath' } ]);
-      expect(onSend).to.have.been.calledWith({
-        event: 'diagramOpened',
-        diagramType: 'bpmn',
-        diagramMetrics: {},
-        elementTemplateCount: 1,
-        elementTemplates: [
-          {
-            appliesTo: [ 'bpmn:ServiceTask' ],
-            properties: {
-              'camunda:asyncBefore': 1,
-              'camunda:class': 1,
-              'camunda:inputParameter': 3,
-              'camunda:outputParameter': 1
-            }
+      expect(elementTemplates).to.eql([
+        {
+          appliesTo: [ 'bpmn:ServiceTask' ],
+          properties: {
+            'camunda:asyncBefore': 1,
+            'camunda:class': 1,
+            'camunda:inputParameter': 3,
+            'camunda:outputParameter': 1
           }
-        ]
-      });
+        }
+      ]);
     });
 
 
@@ -186,6 +202,7 @@ describe('<DiagramOpenEventHandler>', () => {
 
       // given
       const subscribe = sinon.spy();
+
       const config = { get: () => mockElementTemplates() };
 
       const onSendSpy = sinon.spy();
@@ -198,6 +215,11 @@ describe('<DiagramOpenEventHandler>', () => {
         resolve({ status: 413 });
       });
 
+      const tab = createTab({
+        file: { path: 'testPath' },
+        type: 'bpmn'
+      });
+
       // when
       const diagramOpenEventHandler = new DiagramOpenEventHandler({ onSend, subscribe, config });
 
@@ -205,18 +227,20 @@ describe('<DiagramOpenEventHandler>', () => {
 
       const bpmnCallback = subscribe.getCall(0).args[1];
 
-      await bpmnCallback({ tab: { file: { path: 'testPath' } } });
+      await bpmnCallback({ tab });
+
+      const {
+        elementTemplates,
+        elementTemplateCount
+      } = onSendSpy.getCall(1).args[0];
 
       // then
-      expect(onSendSpy).to.have.been.calledWith({
-        event: 'diagramOpened',
-        diagramMetrics: {},
-        diagramType: 'bpmn',
-        elementTemplateCount: 1,
-      });
+      expect(elementTemplates).to.not.exist;
+      expect(elementTemplateCount).to.equal(1);
     });
 
   });
+
 
   describe('diagram metrics', () => {
 
@@ -226,6 +250,7 @@ describe('<DiagramOpenEventHandler>', () => {
 
         // given
         const subscribe = sinon.spy();
+
         const onSend = sinon.spy();
 
         const tab = createTab({
@@ -246,16 +271,18 @@ describe('<DiagramOpenEventHandler>', () => {
 
         await bpmnCallback({ tab });
 
-        const metrics = onSend.getCall(0).args[0].diagramMetrics;
+        const { diagramMetrics } = onSend.getCall(0).args[0];
 
         // then
-        expect(metrics.processVariablesCount).to.eql(3);
+        expect(diagramMetrics.processVariablesCount).to.eql(3);
       });
+
 
       it('should send empty process variables count', async () => {
 
         // given
         const subscribe = sinon.spy();
+
         const onSend = sinon.spy();
 
         const tab = createTab({
@@ -276,16 +303,16 @@ describe('<DiagramOpenEventHandler>', () => {
 
         await bpmnCallback({ tab });
 
-        const metrics = onSend.getCall(0).args[0].diagramMetrics;
+        const { diagramMetrics } = onSend.getCall(0).args[0];
 
         // then
-        expect(metrics.processVariablesCount).to.eql(0);
+        expect(diagramMetrics.processVariablesCount).to.eql(0);
       });
 
     });
 
 
-    describe('user tasks', () => {
+    describe('user tasks - bpmn', () => {
 
       it('should send metrics with root level user tasks', async () => {
 
@@ -310,10 +337,10 @@ describe('<DiagramOpenEventHandler>', () => {
 
         await bpmnCallback({ tab });
 
-        const metrics = onSend.getCall(0).args[0].diagramMetrics;
+        const { diagramMetrics } = onSend.getCall(0).args[0];
 
         // then
-        expect(metrics.tasks.userTask).to.eql({
+        expect(diagramMetrics.tasks.userTask).to.eql({
           count: 8,
           form: {
             count: 6,
@@ -349,10 +376,10 @@ describe('<DiagramOpenEventHandler>', () => {
 
         await bpmnCallback({ tab });
 
-        const metrics = onSend.getCall(0).args[0].diagramMetrics;
+        const { diagramMetrics } = onSend.getCall(0).args[0];
 
         // then
-        expect(metrics.tasks.userTask).to.eql({
+        expect(diagramMetrics.tasks.userTask).to.eql({
           count: 8,
           form: {
             count: 6,
@@ -388,10 +415,10 @@ describe('<DiagramOpenEventHandler>', () => {
 
         await bpmnCallback({ tab });
 
-        const metrics = onSend.getCall(0).args[0].diagramMetrics;
+        const { diagramMetrics } = onSend.getCall(0).args[0];
 
         // then
-        expect(metrics.tasks.userTask).to.eql({
+        expect(diagramMetrics.tasks.userTask).to.eql({
           count: 4,
           form: {
             count: 4,
@@ -427,10 +454,10 @@ describe('<DiagramOpenEventHandler>', () => {
 
         await bpmnCallback({ tab });
 
-        const metrics = onSend.getCall(0).args[0].diagramMetrics;
+        const { diagramMetrics } = onSend.getCall(0).args[0];
 
         // then
-        expect(metrics.tasks.userTask).to.eql({
+        expect(diagramMetrics.tasks.userTask).to.eql({
           count: 0,
           form: {
             count: 0,
@@ -440,12 +467,23 @@ describe('<DiagramOpenEventHandler>', () => {
             other: 0
           }
         });
+
       });
 
     });
 
+
+    // TODO
+    describe.skip('usertasks - cloud');
+
   });
+
+
+  // TODO
+  describe.skip('engine profile');
+
 });
+
 
 // helpers //////
 

@@ -11,11 +11,11 @@
 import { getProcessVariablesCount } from './processVariables';
 import { getUserTaskMetrics } from './userTasks';
 
-export default async function(file) {
+export default async function(file, type) {
   let metrics = {};
 
-  metrics.processVariablesCount = await getProcessVariablesCount(file);
-  const userTaskMetrics = await getUserTaskMetrics(file);
+  metrics.processVariablesCount = await getProcessVariablesCount(file, type);
+  const userTaskMetrics = await getUserTaskMetrics(file, type);
 
   metrics = {
     ...metrics,
